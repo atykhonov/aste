@@ -22,7 +22,7 @@
  * @copyright 2011 Andrey Tykhonov 
  * @author Andrey Tykhonov <atykhonov@gmail.com> 
  * @package Aste 
- * @version 1.0 alfa 
+ * @version 1.0 beta 
  */
 
 /**
@@ -118,7 +118,7 @@ class Aste_Block_Parser {
         if (preg_match($pattern, $this->getContent(), $matches)) {
             
             $this->replaceBlockWithPseudo($name);
-            return trim($matches[2]);
+            return $matches[2];
 
         } else {
             
@@ -183,7 +183,7 @@ class Aste_Block_Parser {
                                             , $fake_tag_begin, $fake_tag_length);
             }
 
-            $this->setContent(trim($content));
+            $this->setContent($content);
         }
 
         // replaces variable which are used for recursive loops
