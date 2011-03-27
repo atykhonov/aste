@@ -22,7 +22,7 @@
  * @copyright 2011 Andrey Tykhonov 
  * @author Andrey Tykhonov <atykhonov@gmail.com> 
  * @package Aste 
- * @version 1.0 alfa 
+ * @version 1.1 beta 
  */
 
 /**

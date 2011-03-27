@@ -1,0 +1,103 @@
+Aste PHP template engine
+
+Author: Andrey Tykhonov <atykhonov@gmail.com>
+
+NOTICE FOR BETA RELEASE:
+
+This release includes ready for use library. It is currently in testing stage.
+
+AN INTRODUCTION TO ASTE
+
+Aste - very fast, small, easy, quick to learn PHP template engine. It is designed to be easy for templating and to be easy in usage with PHP.
+
+Let investigate it!
+
+For example, we have template (template.tpl):
+
+News:
+{news}
+    {newslist}
+        {$content}
+        Publication date: {$publication_date}
+        Author: {$author}
+    {/newslist}
+{/news}
+
+Here we can see two types of constructions which uses within Aste template engine:
+
+1. {block}{/block}
+2. {$variable}
+
+And it is enough to know only these two constructions. You don't need to know anymore: there are just no more constructions!
+
+To parse such template by means of PHP first of all we need to include all require scripts from library:
+
+include_once 'library/Aste/Template.php';                                                                                                                                                 
+include_once 'library/Aste/Block.php';
+include_once 'library/Aste/Block/Parser.php';
+include_once 'library/Aste/Exception.php';
+
+Then we initialize template:
+
+$template = new Aste_Template('template.tpl');
+
+After that we have $template object by means of which we can do template manipulations:
+
+$news = $template->getBlock('news');
+$news->display();
+for($i = 1; $i < 6; $i++) {
+    // get child cyclic block
+    // first of all we need to prepare block and only then use it within the cycle
+    $newslist = $news->getBlock('newslist', true); // This is the same as $newslist = $news->loop('newslist');
+    // set vars
+    $newslist->setVar('content', 'News ' . $i);
+    $newslist->setVar('publication_date', date('d-m-Y', time()));
+    $newslist->setVar('author', 'Anonymous');
+}
+echo $template->fetch();
+
+Actually we need to get any block (text wrapped by {block} and {/block} tags) by means of code:
+
+// for conditions
+$childBlock = $block->getBlock('name');
+
+or
+
+// for cycles
+$childBlock = $block->getBlock('name', true);
+
+and do some manipulations.
+
+Second parameter in getBlock method means that we are going to build cyclic content. So, for conditions we should to use first example and second for cycles.
+
+Also, it is easy to build recursive cycles. 
+
+For such purposes, instead of $block->loop('childname') (or $block->getBlock('childname', true)), we just need to use $block->rloop().
+
+Template for a recursive cycles will be such as:
+
+{category}
+    {$category}
+{category}
+
+Please note: variable {$category} has the same name as block.
+
+Then in php:
+
+// get category block
+$category = $template->getBlock('category');
+$category->setVar('name', 'root');
+$category->display();
+
+// prepare block for recursive cycle
+$category->rloop();
+
+// get recently initialized child block
+$child = $category->getBlock('category');
+$child->setVar('name', 'child');
+$child->display(); 
+
+echo $template->fetch();
+
+
+That's all!
