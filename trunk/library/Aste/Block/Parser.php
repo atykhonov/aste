@@ -1,112 +1,225 @@
 <?php
 
+/**
+ * Project:     Aste: the PHP template engine 
+ * SVN:         $Id: $id$ 
+ * 
+ * Copyright (C) 2011 Andrey Tykhonov 
+ * 
+ * This program is free software: you can redistribute it and/or modify 
+ * it under the terms of the GNU General Public License as published by 
+ * the Free Software Foundation, either version 3 of the License, or 
+ * (at your option) any later version. 
+ * 
+ * This program is distributed in the hope that it will be useful, 
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of 
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+ * GNU General Public License for more details. 
+ * 
+ * You should have received a copy of the GNU General Public License 
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>. 
+ * 
+ * @copyright 2011 Andrey Tykhonov 
+ * @author Andrey Tykhonov <atykhonov@gmail.com> 
+ * @package Aste 
+ * @version 1.0 alfa 
+ */
+
+/**
+ * Parser does template parsing
+ */
 class Aste_Block_Parser {
 
-    const START_BLOCK_PREFIX = '[{]';
-
-    const END_BLOCK_PREFIX = '[{]/';
-
-    const TAG_ENDFIX = '[}]';
-
+    // template delimiters and marks
+    const LEFT_DELIMITER = '{';
+    const END_BLOCK_MARK = '/';
+    const RIGHT_DELIMITER = '}';
+    const VAR_MARK = '$';
     const FAKE_TAG_PREFIX = '{@%@';
+    const FAKE_RIGHT_DELIMITER = '@%@}';
 
-    const FAKE_TAG_ENDFIX = '@%@}';
-
-    const VAR_PREFIX = '{$';
-
-    const VAR_ENDFIX = '}';
-
+    // template content
     private $content = null;
 
+    // template pattern
+    private $pattern = null;
+        
+    /**
+     * Class constructor
+     * 
+     * @param string $content 
+     * @access public
+     * @return void
+     */
     public function __construct($content = '') {
         
         $this->setContent($content);
+        $this->setPattern($content);
     }
 
+    /**
+     * Set template content
+     * 
+     * @param string $content 
+     * @access public
+     * @return void
+     */
     public function setContent($content) {
 
         $this->content = $content;
     }
 
+    /**
+     * Returns template content
+     * 
+     * @access public
+     * @return string
+     */
     public function getContent() {
 
         return $this->content;
     }
 
-    public function fetchBlockContent($name, $content) {
+    /**
+     * Set pattern
+     * 
+     * @param string $content 
+     * @access private
+     * @return void
+     */
+    private function setPattern($content) {
 
-        $pattern = '#(' . self::START_BLOCK_PREFIX 
-                        . $name 
-                        . self::TAG_ENDFIX 
-                        . ')(.*)(' 
-                        . self::END_BLOCK_PREFIX 
-                        . $name 
-                        . self::TAG_ENDFIX 
-                        . ')#is';
+        $this->pattern = $content;
+    }
 
-        $replacement = self::FAKE_TAG_PREFIX . $name . self::FAKE_TAG_ENDFIX;
+    /**
+     * Returns pattern
+     * 
+     * @access private
+     * @return string
+     */
+    public function getPattern() {
+
+        return $this->pattern;
+    }
+
+    /**
+     * Fetchs content of the child block by block name
+     * 
+     * @param string $name 
+     * @access public
+     * @return string
+     */
+    public function fetchBlockContent($name) {
+
+        $pattern = $this->getFetchBlockPattern($name);
 
         $matches = array();
-        if (preg_match($pattern, $content, $matches)) {
+        if (preg_match($pattern, $this->getContent(), $matches)) {
             
-            $blockContent = preg_replace($pattern, $replacement, $content); 
-
-            $this->setContent(trim($blockContent));
-
-            return $matches[2]; 
+            $this->replaceBlockWithPseudo($name);
+            return trim($matches[2]);
 
         } else {
             
-            throw new Exception(sprintf('Block "%s" does not exist!', $name));
+            throw new Aste_Exception(sprintf('Block "%s" does not exist!', $name));
         }
     }
 
-    public function fetchBlock($block) {
+    private function replaceBlockWithPseudo($pseudo) {
 
-        foreach($block->getBlocks() as $name => $child) {
+        $replacement = self::FAKE_TAG_PREFIX . $pseudo . self::FAKE_RIGHT_DELIMITER;
 
-            $fake_tag = self::FAKE_TAG_PREFIX . $name . self::FAKE_TAG_ENDFIX;
-            $fake_tag_length = strlen($fake_tag);
-            $fake_tag_begin = strpos($block->getContent(), $fake_tag);
+        $blockContent = preg_replace($this->getFetchBlockPattern($pseudo), $replacement, $this->getContent()); 
 
-            if ($fake_tag_begin !== false) {
+        $this->setContent(trim($blockContent));
+    }
 
-                if ($child->doDisplay() === true) {
+    private function getFetchBlockPattern($name) {
 
-                    $content = substr_replace($block->getContent(), $child->fetch(), $fake_tag_begin, $fake_tag_length);
-                } elseif($child->doDisplay() === false) {
+        return '#(' . self::LEFT_DELIMITER 
+                        . $name 
+                        . self::RIGHT_DELIMITER 
+                        . ')(.*)(' 
+                        . self::LEFT_DELIMITER
+                        . self::END_BLOCK_MARK 
+                        . $name 
+                        . self::RIGHT_DELIMITER 
+                        . ')#is';
+    }
 
-                    $content = substr_replace($block->getContent(), '', $fake_tag_begin, $fake_tag_length);
-                } else {
+    /**
+     * Fetchs block content
+     * 
+     * @param Aste_Block $block 
+     * @access public
+     * @return void
+     */
+    public function fetch($block) {
 
-                    $content = substr_replace($block->getContent()
-                                                , self::START_BLOCK_PREFIX 
-                                                    . $name 
-                                                    . self::TAG_ENDFIX 
-                                                    . $child->getContent() 
-                                                    . self::END_BLOCK_PREFIX 
-                                                    . $name 
-                                                    . self::TAG_ENDFIX
-                                                , $fake_tag_begin, $fake_tag_length);
-                }
+        $fake_tag = self::FAKE_TAG_PREFIX . $block->getName() . self::FAKE_RIGHT_DELIMITER;
+        $fake_tag_length = strlen($fake_tag);
+        $fake_tag_begin = strpos($this->getContent(), $fake_tag);
 
-                $block->setContent($content);
+        if ($fake_tag_begin !== false) {
+
+            if ($block->isDisplayable() === true) {
+
+                $content = substr_replace($this->getContent(), $block->fetch(), $fake_tag_begin, $fake_tag_length);
+            } elseif($block->isDisplayable() === false) {
+
+                $content = substr_replace($this->getContent(), '', $fake_tag_begin, $fake_tag_length);
+            } else {
+
+                $content = substr_replace($this->getContent()
+                                            , self::LEFT_DELIMITER 
+                                                . $block->getName()
+                                                . self::RIGHT_DELIMITER 
+                                                . $block->getContent() 
+                                                . self::LEFT_DELIMITER
+                                                . self::END_BLOCK_MARK 
+                                                . $block->getName()
+                                                . self::RIGHT_DELIMITER
+                                            , $fake_tag_begin, $fake_tag_length);
             }
+
+            $this->setContent(trim($content));
         }
 
-        return trim($block->getContent());
+        // replaces variable which are used for recursive loops
+        $this->parseVar($block->getName(), '');
     }
 
-    public function parseVar($content, $name, $value) {
+    /**
+     * Parses template variable
+     * 
+     * @param string $name - variable name
+     * @param string $value - variable value
+     * @access public
+     * @return void
+     */
+    public function parseVar($name, $value) {
 
-        $varTag = self::VAR_PREFIX . $name . self::VAR_ENDFIX;
+        $varTag = self::LEFT_DELIMITER . self::VAR_MARK . $name . self::RIGHT_DELIMITER;
         $varTagLen = strlen($varTag);
-        $varTagPos = strpos($content, $varTag);
+        $varTagPos = strpos($this->getContent(), $varTag);
         if ($varTagPos !== false) {
+
+            $content = substr_replace($this->getContent(), $value, $varTagPos, $varTagLen);
             
-            $content = substr_replace($content, $value, $varTagPos, $varTagLen);
             $this->setContent($content);
-            return $content;
         }
+    }
+
+    /**
+     * Prepares the template for the recursive loop
+     * 
+     * @param string $name - block name
+     * @access public
+     * @return void
+     */
+    public function rloop($name) {
+
+        $this->parseVar($name, self::FAKE_TAG_PREFIX . $name . self::FAKE_RIGHT_DELIMITER);
     }
 }
