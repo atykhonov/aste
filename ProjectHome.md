@@ -1,0 +1,1 @@
+Aste - very fast, small, easy, quick to learn PHP template engine. It is designed to be easy for templating (it is enough to know only TWO tags). Very easy to use it with PHP.
